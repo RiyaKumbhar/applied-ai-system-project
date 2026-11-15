@@ -1,6 +1,5 @@
 import sys
 from pathlib import Path
-from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
@@ -10,21 +9,20 @@ from vibematch import VibeMatch  # noqa: E402
 
 
 class FakeClient:
-    """Stands in for anthropic.Anthropic: parse() returns a ParsedRequest, create() returns text."""
+    """Stands in for an llm.py backend."""
 
     def __init__(self, parsed=None, text="", fail=False):
         self.parsed, self.text, self.fail = parsed, text, fail
-        self.messages = self
 
-    def parse(self, **kwargs):
+    def structured(self, system, user, schema):
         if self.fail:
             raise RuntimeError("api down")
-        return SimpleNamespace(stop_reason="end_turn", parsed_output=self.parsed)
+        return self.parsed
 
-    def create(self, **kwargs):
+    def generate(self, system, user):
         if self.fail:
             raise RuntimeError("api down")
-        return SimpleNamespace(stop_reason="end_turn", content=[SimpleNamespace(type="text", text=self.text)])
+        return self.text
 
 
 def test_validate_drops_out_of_vocabulary_and_clamps():

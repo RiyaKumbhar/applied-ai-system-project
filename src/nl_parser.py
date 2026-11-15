@@ -7,13 +7,10 @@ unavailable we fall back to a keyword parser so the system never hard-fails.
 
 from __future__ import annotations
 
-import os
 import re
 from typing import Dict, List, Optional, Tuple
 
 from pydantic import BaseModel, Field
-
-PARSER_MODEL = os.getenv("VIBEMATCH_PARSER_MODEL", "claude-haiku-5-5")
 
 # Vocabulary of the catalog (data/songs.csv). Used to constrain/validate LLM output.
 GENRES = ["ambient", "blues", "classical", "country", "edm", "folk", "hip-hop", "indie pop",
@@ -122,7 +119,7 @@ def keyword_parse(text: str) -> Dict:
 def parse_request(text: str, client=None) -> Tuple[Dict, str]:
     """Return (prefs, source) where source is 'llm' or 'keyword-fallback'.
 
-    `client` is an anthropic.Anthropic instance (injectable for tests). If None, one is
+    `client` is any llm.py backend (injectable for tests). If None, one is
     created when credentials exist; otherwise we use the keyword parser.
     """
     text = (text or "").strip()[:500]  # bound untrusted input
@@ -130,19 +127,9 @@ def parse_request(text: str, client=None) -> Tuple[Dict, str]:
         return {}, "empty"
     try:
         if client is None:
-            import anthropic
-            client = anthropic.Anthropic()
-        response = client.messages.parse(
-            model=PARSER_MODEL,
-            max_tokens=1024,
-            system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": text}],
-            output_format=ParsedRequest,
-            output_config={"effort": "low"},
-        )
-        if response.stop_reason == "refusal" or response.parsed_output is None:
-            raise RuntimeError("model declined or returned no parsed output")
-        prefs = validate_profile(response.parsed_output)
+            from llm import get_client
+            client = get_client()
+        prefs = validate_profile(client.structured(SYSTEM_PROMPT, text, ParsedRequest))
         if prefs:
             return prefs, "llm"
     except Exception:  # noqa: BLE001 - any API/config failure degrades gracefully

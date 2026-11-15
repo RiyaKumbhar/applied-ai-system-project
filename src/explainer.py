@@ -7,13 +7,10 @@ the deterministic score reasons.
 
 from __future__ import annotations
 
-import os
 import re
 from typing import Dict, List, Sequence, Tuple
 
 from rag import Document
-
-EXPLAINER_MODEL = os.getenv("VIBEMATCH_EXPLAINER_MODEL", "claude-sonnet-5-5")
 
 SYSTEM_PROMPT = (
     "You explain music recommendations to a listener. Use ONLY the facts in the provided "
@@ -49,18 +46,9 @@ def explain(request: str, recs: Sequence[Tuple[Dict, float, str]], docs: Sequenc
         return "No songs matched that request.", "rule-based-fallback"
     try:
         if client is None:
-            import anthropic
-            client = anthropic.Anthropic()
-        response = client.messages.create(
-            model=EXPLAINER_MODEL,
-            max_tokens=2000,
-            system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": build_prompt(request, recs, docs)}],
-            output_config={"effort": "low"},
-        )
-        if response.stop_reason == "refusal":
-            raise RuntimeError("declined")
-        text = "".join(b.text for b in response.content if b.type == "text").strip()
+            from llm import get_client
+            client = get_client()
+        text = client.generate(SYSTEM_PROMPT, build_prompt(request, recs, docs))
         valid = {d.doc_id for d in docs}
         cites = cited_ids(text)
         # Guardrail: must cite, and every citation must be a retrieved document.

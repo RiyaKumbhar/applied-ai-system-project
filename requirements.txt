@@ -5,3 +5,4 @@ anthropic
 scikit-learn
 pydantic
 python-dotenv
+google-genai
