@@ -33,7 +33,7 @@ flowchart TD
     PIPE -.-> LOG
     API -.-> LOG
     LOG --> H2([Human check 2 - developer<br/>reviews logs and failures])
-    T[Tests - pytest<br/>25 tests with a fake LLM] -.->|verifies| PIPE
+    T[Tests - pytest<br/>31 tests with a fake LLM] -.->|verifies| PIPE
     EV[Evaluator - eval/run_eval.py<br/>17 prompts: parse accuracy,<br/>ranking hit@3, citations,<br/>coverage, safety] -.->|measures| PIPE
     EV --> REP[eval/report.md]
     REP --> H2

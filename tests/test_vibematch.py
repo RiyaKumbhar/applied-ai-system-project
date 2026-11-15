@@ -114,3 +114,49 @@ def test_still_incomplete_is_patched_with_rule_based_line():
     only_a = f"{a['title']} fits. [song:{a['id']}]"
     text, source = explain("q", recs, vm.retriever.corpus, SeqClient([only_a, only_a]))
     assert source == "llm-partial" and b["title"] in text
+
+
+def test_brief_fallback_is_short_and_skips_penalties():
+    from explainer import brief_fallback
+    out = brief_fallback("genre match: lofi (+2.0); mood match: chill (+1.0); "
+                         "energy 0.42 is 0.07 from target 0.35 (+1.4); diversity penalty: lofi already in list (-0.50)")
+    assert out == "Matches your request: lofi genre, chill mood, energy close to your target."
+
+
+def test_reasons_by_id_parses_lines_and_fills_gaps():
+    from explainer import reasons_by_id
+    vm, recs = _two_recs()
+    (a, _, _), (b, _, _) = recs
+    text = f"{a['title']}: Slow and instrumental, great for focus. [song:{a['id']}]"
+    reasons = reasons_by_id(text, recs)
+    assert reasons[a["id"]] == "Slow and instrumental, great for focus."  # title prefix and citation stripped
+    assert reasons[b["id"]].startswith("Matches your request")            # missing song gets a rule-based reason
+    assert set(reasons) == {a["id"], b["id"]}
+
+
+def test_voice_style_is_default_and_generic_is_available():
+    from explainer import GENERIC_PROMPT, STYLES, VOICE_PROMPT
+    assert STYLES["voice"] is VOICE_PROMPT and STYLES["generic"] is GENERIC_PROMPT
+    vm, recs = _two_recs()
+    names = " ".join(f"{s['title']}." for s, _, _ in recs)
+    text, source = explain("q", recs, vm.retriever.corpus, FakeClient(text=f"{names} [song:{recs[0][0]['id']}]"),
+                           style="generic")
+    assert source == "llm-grounded"
+
+
+def test_every_result_song_has_a_reason():
+    result = VibeMatch(client=FakeClient(fail=True)).ask("aggressive metal")
+    assert result.recommendations and all(result.reasons[s["id"]] for s, _, _ in result.recommendations)
+
+
+def test_wrong_citation_id_is_repaired_and_reason_goes_to_right_song():
+    from explainer import reasons_by_id, repair_attribution
+    vm, recs = _two_recs()
+    (a, _, _), (b, _, _) = recs
+    # model cites b's id on a's line (a real id, but the wrong song)
+    text = (f"{a['title']}: Calm and instrumental. [song:{b['id']}]\n"
+            f"{b['title']}: Cozy study tags match. [song:{b['id']}]")
+    fixed_text, n = repair_attribution(text, recs)
+    assert n == 1 and f"[song:{a['id']}]" in fixed_text.splitlines()[0]
+    reasons = reasons_by_id(text, recs)  # even unrepaired, titles decide
+    assert reasons[a["id"]] == "Calm and instrumental." and reasons[b["id"]] == "Cozy study tags match."

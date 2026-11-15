@@ -52,7 +52,7 @@ flowchart TD
     PIPE -.-> LOG
     API -.-> LOG
     LOG --> H2([Human check 2 - developer<br/>reviews logs and failures])
-    T[Tests - pytest<br/>25 tests with a fake LLM] -.->|verifies| PIPE
+    T[Tests - pytest<br/>31 tests with a fake LLM] -.->|verifies| PIPE
     EV[Evaluator - eval/run_eval.py<br/>17 prompts: parse accuracy,<br/>ranking hit@3, citations,<br/>coverage, safety] -.->|measures| PIPE
     EV --> REP[eval/report.md]
     REP --> H2
@@ -91,9 +91,10 @@ Run it:
 ```bash
 uvicorn server:app --reload                                  # web app at http://localhost:8000
 python src/vibematch.py "upbeat latin party music"           # command line
-python -m pytest -q                                          # 25 tests, no API key needed
+python -m pytest -q                                          # 31 tests, no API key needed
 python eval/run_eval.py                                      # live evaluation (uses the API)
 python eval/run_eval.py --offline                            # evaluation, fallbacks only
+python eval/compare_variants.py                              # before/after: retrieval and voice (uses the API)
 ```
 
 Optional settings in `.env`: `VIBEMATCH_PROVIDER=anthropic` to use Claude instead of Gemini (needs `ANTHROPIC_API_KEY`), and `VIBEMATCH_GEMINI_MODEL` to change the model (default `gemini-3.1-flash-lite`, the cheapest available text model when I built this). Your key is read from `.env`, which is git-ignored.
@@ -144,9 +145,43 @@ These are real outputs from the running system (live Gemini calls, top 4 songs).
 - **Vanilla HTML/JS frontend with FastAPI** rather than a framework. No build step and easy to read, at the cost of hand-written DOM code.
 - **Small hand-built catalog (42 songs).** Great for understanding every result, but it limits variety and means niche requests find few good matches.
 
+## Enhancements: RAG sources, specialized voice, and per-song reasons
+
+All numbers below come from [eval/compare_variants.py](eval/compare_variants.py) (live LLM, 6 prompts, 29 recommended-song lines, identical recommendations for every variant; full output in [eval/comparison_report.md](eval/comparison_report.md) and the raw model text in [eval/comparison_raw.json](eval/comparison_raw.json)).
+
+| Variant | unsupported_terms (lower is better) | words_per_line (lower) | filler_rate (lower) | citations_valid | coverage |
+|---|---|---|---|---|---|
+| A: no retrieval, generic prompt | 0.32 | 22.4 | 0.38 | n/a (cannot cite) | 1.0 |
+| B: retrieval, generic prompt | 0.03 | 16.9 | 0.31 | 1.0 | 1.0 |
+| C: retrieval + VibeMatch voice (shipped) | 0.07 | 12.9 | 0.00 | 1.0 | 1.0 |
+
+`unsupported_terms` is the share of catalog-vocabulary words (genres, moods, vibe tags) in a line that are *not* among that song's real genre, mood or tags, a measure of invented descriptors. `filler_rate` counts words like "perfect", "ideal" and "vibe".
+
+### RAG enhancement: multiple retrieved sources (A to B)
+
+Retrieval draws on three sources: a generated "song card" for every catalog song, my own genre notes and my own mood notes (`data/knowledge/`). The explainer only sees these documents, must cite them, and is rejected if it cites anything else.
+
+- **Before (A, no retrieval)** for "high energy gym workout music": *"Block Party by Lyric Vandal: This track brings an incredible surge of energy that is perfect for keeping your heart rate up during intense sets."* Fluent, but nothing in the data supports "heart rate" or "intense sets", and there is no source to check.
+- **After (B, with retrieval):** *"Block Party by Lyric Vandal is an energetic hip-hop track that is perfect for getting you pumped up [song:31]."* Shorter, tied to the song's real genre and mood, and carrying a citation.
+- **Measured effect:** invented descriptors fell from 32% to 3% of catalog terms, and answers became checkable.
+
+### Specialization: the "VibeMatch voice" (B to C)
+
+The shipped explainer prompt sets a fixed persona, a strict output format (`Title: reason [song:ID]`), a 16-word limit, a rule to name one concrete fact, a ban on filler words, and two few-shot examples with fictional songs.
+
+- **Before (B):** *"Candy Static by Neon Echo is a bright and energetic pop song that will keep you feeling good during your exercise [song:22]."*
+- **After (C):** *"Candy Static: Features a pumped tag and 126 BPM to keep your workout moving. [song:22]"*
+- **Measured effect:** 16.9 to 12.9 words per line, and filler words from 31% of lines to 0%.
+
+**Costs I measured, not just benefits:** the voice is a little less grounded than plain retrieval (unsupported terms 0.03 to 0.07), it cited the wrong song id on 2 of 29 lines (generic: 0 of 29), and it can read mechanically ("features a pumped tag"). The wrong-id problem exposed a real gap in my citation check: it verified that a cited id was *retrieved*, not that it belonged to the song named on that line. I now repair such citations automatically (the title on the line is authoritative) and match reasons by title first. `concrete_rate` was 1.0 for every variant, so it did not discriminate and I do not rely on it. With 6 prompts these are indicative differences, not statistically solid ones.
+
+### Brief reason for every suggested song
+
+Each card shows a one-line "Why this song" (visible without clicking), the chat lists "Title - reason" for every pick, and the score math moved to a "Score breakdown" you can expand. If the LLM is unavailable, a rule-based sentence ("Matches your request: lofi genre, chill mood, ...") is used, so every song always has a reason.
+
 ## Testing summary
 
-**How I tested:** 25 unit and API tests with a fake LLM client ([tests/](tests/)), plus an evaluation harness ([eval/run_eval.py](eval/run_eval.py)) that runs 17 prompts (13 ordinary, plus prompt injection, gibberish, off-topic and an unknown genre) and checks parsing, ranking, citation validity, explanation completeness and safety.
+**How I tested:** 31 unit and API tests with a fake LLM client ([tests/](tests/)), plus an evaluation harness ([eval/run_eval.py](eval/run_eval.py)) that runs 17 prompts (13 ordinary, plus prompt injection, gibberish, off-topic and an unknown genre) and checks parsing, ranking, citation validity, explanation completeness and safety.
 
 | Metric (live LLM, 17 prompts) | Result |
 |---|---|

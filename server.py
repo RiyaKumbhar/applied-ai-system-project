@@ -33,7 +33,7 @@ class ChatRequest(BaseModel):
     k: int = Field(6, ge=1, le=12)
 
 
-def song_json(song: dict, score: float = None, why: str = "", ceiling: float = 0.0) -> dict:
+def song_json(song: dict, score: float = None, why: str = "", ceiling: float = 0.0, reason: str = "") -> dict:
     out = {
         "id": song["id"], "title": song["title"], "artist": song["artist"],
         "genre": song["genre"], "mood": song["mood"], "energy": song["energy"],
@@ -43,7 +43,8 @@ def song_json(song: dict, score: float = None, why: str = "", ceiling: float = 0
     }
     if score is not None:
         out["match"] = round(max(0.0, min(1.0, score / ceiling)) * 100) if ceiling else 0
-        out["why"] = [r for r in why.split("; ") if r]
+        out["why"] = [r for r in why.split("; ") if r]  # score breakdown
+        out["reason"] = reason  # brief human-readable reason shown on the card
     return out
 
 
@@ -89,7 +90,7 @@ def create_app(engine: VibeMatch | None = None) -> FastAPI:
         return {
             "reply": result.explanation,
             "profile": result.prefs,
-            "songs": [song_json(s, sc, why, ceiling) for s, sc, why in result.recommendations],
+            "songs": [song_json(s, sc, why, ceiling, result.reasons.get(s["id"], "")) for s, sc, why in result.recommendations],
             "parse_source": result.parse_source,
             "explain_source": result.explain_source,
         }

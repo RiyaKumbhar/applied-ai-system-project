@@ -1,0 +1,29 @@
+{
+  "A: no retrieval, generic": {
+    "answers": 6,
+    "unsupported_terms": 0.32,
+    "concrete_rate": 1,
+    "words_per_line": 22.4,
+    "filler_rate": 0.38,
+    "citations_valid": null,
+    "coverage": 1.0
+  },
+  "B: retrieval, generic": {
+    "answers": 6,
+    "unsupported_terms": 0.03,
+    "concrete_rate": 1,
+    "words_per_line": 16.9,
+    "filler_rate": 0.31,
+    "citations_valid": 1,
+    "coverage": 1.0
+  },
+  "C: retrieval + VibeMatch voice": {
+    "answers": 6,
+    "unsupported_terms": 0.07,
+    "concrete_rate": 1,
+    "words_per_line": 12.9,
+    "filler_rate": 0,
+    "citations_valid": 1,
+    "coverage": 1.0
+  }
+}

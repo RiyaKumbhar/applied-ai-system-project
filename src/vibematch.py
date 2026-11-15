@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from dotenv import load_dotenv
 
-from explainer import explain
+from explainer import explain, reasons_by_id
 from nl_parser import parse_request
 from rag import Retriever, build_corpus, context_for
 from log import setup_logging
@@ -42,6 +42,7 @@ class VibeResult:
     explanation: str
     explain_source: str
     evidence_ids: List[str] = field(default_factory=list)
+    reasons: Dict[int, str] = field(default_factory=dict)  # song id -> brief reason
 
 
 class VibeMatch:
@@ -62,7 +63,8 @@ class VibeMatch:
         text, explain_source = explain(request, recs, docs, self.client)
         log.info("ask chars=%d parse=%s explain=%s songs=%d profile=%s %.2fs", len(request), parse_source,
                  explain_source, len(recs), prefs, time.perf_counter() - t0)
-        return VibeResult(request, prefs, parse_source, recs, text, explain_source, [d.doc_id for d in docs])
+        return VibeResult(request, prefs, parse_source, recs, text, explain_source,
+                          [d.doc_id for d in docs], reasons_by_id(text, recs))
 
 
 def main() -> None:

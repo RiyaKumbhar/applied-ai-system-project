@@ -36,6 +36,7 @@
       h("div", { class: "card-top" },
         rank ? h("div", { class: "rank", text: rank }) : null,
         h("div", {}, h("div", { class: "title", text: song.title }), h("div", { class: "artist", text: song.artist }))),
+      song.reason ? h("div", { class: "reason" }, h("b", { text: "Why this song" }), h("span", { text: song.reason })) : null,
       h("div", { class: "pills" }, h("span", { class: "pill", text: cap(song.genre) }), h("span", { class: "pill", text: cap(song.mood) }),
         song.instrumental ? h("span", { class: "pill", text: "Instrumental" }) : null),
       song.match != null ? meter("Match", song.match) : null,
@@ -44,7 +45,7 @@
         h("div", { class: "meta" }, h("span", { text: `${song.tempo} BPM` }), h("span", { text: `${song.decade}s` }),
           h("span", { text: song.explicit ? "Explicit" : "Clean" })),
         song.tags.length ? h("div", { text: `Vibes: ${song.tags.join(", ")}` }) : null,
-        why.length ? h("ul", {}, why) : null));
+        why.length ? h("div", {}, h("b", { text: "Score breakdown" }), h("ul", {}, why)) : null));
     return el;
   }
 
@@ -123,7 +124,10 @@
       if (!res.ok) throw new Error(data.detail || "Request failed");
       typing.remove();
       const note = { "llm-grounded": "AI-written, grounded in song data", "llm-partial": "AI-written, with some rule-based notes" }[data.explain_source] || "Rule-based explanation";
-      bubble("bot", [renderReply(data.reply), data.songs.length ? h("span", { class: "src", text: note }) : null]);
+      bubble("bot", data.songs.length ? [
+        h("div", { text: `Here ${data.songs.length === 1 ? "is 1 pick" : `are ${data.songs.length} picks`} for you:` }),
+        h("ul", {}, data.songs.map((s) => h("li", {}, h("strong", { text: s.title }), ` - ${s.reason}`))),
+        h("span", { class: "src", text: note })] : renderReply(data.reply));
       state.recs = data.songs; state.tab = "foryou"; state.genre = null; state.sort = "match"; els.sort.value = "match";
       els.subtitle.textContent = data.songs.length ? `${data.songs.length} songs for "${message}"` : "Try a different description.";
       showProfile(data.profile); render();

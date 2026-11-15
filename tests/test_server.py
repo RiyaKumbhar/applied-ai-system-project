@@ -62,3 +62,8 @@ def test_rate_limit():
 def test_catalog():
     songs = make_client(fail=True).get("/api/songs").json()["songs"]
     assert len(songs) == 42 and "match" not in songs[0]
+
+
+def test_chat_songs_include_brief_reason():
+    songs = make_client(fail=True).post("/api/chat", json={"message": "chill lofi"}).json()["songs"]
+    assert songs and all(s["reason"] and isinstance(s["why"], list) for s in songs)
