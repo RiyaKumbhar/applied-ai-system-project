@@ -60,6 +60,25 @@ def check_case(case: dict, result) -> dict:
             "profile": result.prefs, "top3": [s["title"] for s in songs[:3]]}
 
 
+def case_table(rows: list, cases: list) -> list:
+    """Per-prompt results as a markdown table (parseable, text-only)."""
+    by_id = {c["id"]: c for c in cases}
+    out = ["| Test input | Evaluation criteria | Parsed by | Explained by | Coverage | Result |", "|---|---|---|---|---|---|"]
+    for r in rows:
+        c = by_id[r["id"]]
+        crit = ("returns no songs" if c.get("expect_no_results") else
+                ", ".join(f"{k}={v}" for k, v in c.get("expect", {}).items()) or "no crash")
+        if c.get("top3_genres"):
+            crit += "; top-3 has " + "/".join(c["top3_genres"][:3])
+        if c.get("must_not_contain"):
+            crit += "; no prompt leakage"
+        ok = r["parse_ok"] and r["ranking_ok"] and r["grounded_ok"] and r["safety_ok"]
+        prompt = r["prompt"].replace("|", "/")
+        out.append(f"| \"{prompt}\" | {crit} | {r['parse_source']} | {r['explain_source']} | "
+                   f"{r['coverage']:.0%} | {'Pass' if ok else 'Fail'} |")
+    return out
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--offline", action="store_true", help="use fallbacks only (no API calls)")
@@ -100,6 +119,7 @@ def main() -> None:
     fails = [r for r in rows if not (r["parse_ok"] and r["ranking_ok"] and r["grounded_ok"] and r["safety_ok"])]
     lines += [f"- **{r['id']}** (`{r['prompt']}`): missing {r['missing'] or '-'}, ranking_ok={r['ranking_ok']}, "
               f"top3={r['top3']}, profile={r['profile']}" for r in fails] or ["None."]
+    lines += ["", "## Per-prompt results", ""] + case_table(rows, cases)
     name = "report_offline" if args.offline else "report"
     (HERE / f"{name}.md").write_text("\n".join(lines) + "\n")
     (HERE / f"results_{'offline' if args.offline else 'live'}.json").write_text(json.dumps(rows, indent=2))
