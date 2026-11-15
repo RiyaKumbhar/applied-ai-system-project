@@ -757,6 +757,8 @@ Full model card: [**Model Card**](model_card.md)
 
 ## VibeMatch: LLM layer (natural language + RAG)
 
+![VibeMatch web app: song cards on the left, mood chat assistant on the right](assets/vibematch-ui.png)
+
 ```
 user text -> [Claude: structured parse] -> profile -> [deterministic scorer] -> top-k
                                                               |

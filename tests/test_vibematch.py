@@ -71,3 +71,9 @@ def test_retrieval_finds_relevant_genre_note():
     vm = VibeMatch(client=FakeClient(fail=True))
     ids = [d.doc_id for d in vm.retriever.search("dusty mellow beats for studying", k=3, kinds=("genre",))]
     assert "genre:lofi" in ids
+
+
+def test_zero_score_songs_are_dropped():
+    result = VibeMatch(client=FakeClient(fail=True)).ask("i am angry", k=12)
+    assert result.recommendations
+    assert all(score > 0.05 for _, score, _ in result.recommendations)

@@ -19,7 +19,8 @@
     kids.flat().forEach((c) => c != null && el.append(c));
     return el;
   };
-  const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  const LABELS = { edm: "EDM", "r&b": "R&B", lofi: "Lo-fi", "hip-hop": "Hip-hop" };
+  const cap = (s) => LABELS[s] || s.charAt(0).toUpperCase() + s.slice(1);
   const toast = (msg) => {
     els.toast.textContent = msg; els.toast.hidden = false;
     clearTimeout(toast.t); toast.t = setTimeout(() => (els.toast.hidden = true), 4000);

@@ -22,6 +22,7 @@ from nl_parser import parse_request
 from rag import Retriever, build_corpus, context_for
 from recommender import ARTIST_PENALTY, GENRE_PENALTY, load_songs, recommend_songs
 
+MIN_SCORE = 0.05  # recommendations scoring at or below this are dropped
 ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(ROOT / ".env")
 
@@ -48,6 +49,8 @@ class VibeMatch:
         prefs, parse_source = parse_request(request, self.client)
         recs = recommend_songs(prefs, self.songs, k=k,
                                artist_penalty=ARTIST_PENALTY, genre_penalty=GENRE_PENALTY) if prefs else []
+        # Drop songs that matched nothing (score <= 0): they are noise, not recommendations.
+        recs = [r for r in recs if r[1] > MIN_SCORE]
         docs = context_for(self.retriever, request, [s for s, _, _ in recs])
         text, explain_source = explain(request, recs, docs, self.client)
         return VibeResult(request, prefs, parse_source, recs, text, explain_source, [d.doc_id for d in docs])
