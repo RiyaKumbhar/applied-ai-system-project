@@ -6,7 +6,7 @@ Type how you feel ("cozy rainy-day study music, no lyrics") and VibeMatch turns 
 
 ## Built on my Module 1-3 project
 
-This is an evolution of **Music Recommender Simulation (VibeFinder 1.0)**, my Module 1-3 project. The original was a content-based recommender: you gave it a hand-written taste profile (genre, mood, energy, plus optional tags, decade, popularity, language, instrumental and explicit flags) and it scored all 42 songs in `data/songs.csv`, returning the top 5 with the reasons behind each score. It had three ranking modes, a diversity penalty, and a model card analysing its biases. The original README is preserved in [docs/original-module1-3-README.md](docs/original-module1-3-README.md) and its [model card](model_card.md) is kept in the repo root.
+This is an evolution of **Music Recommender Simulation (VibeFinder 1.0)**, my Module 1-3 project. The original was a content-based recommender: you gave it a hand-written taste profile (genre, mood, energy, plus optional tags, decade, popularity, language, instrumental and explicit flags) and it scored all 42 songs in `data/songs.csv`, returning the top 5 with the reasons behind each score. It had three ranking modes, a diversity penalty, and a model card analysing its biases. The original README is preserved in [docs/original-module1-3-README.md](docs/original-module1-3-README.md) and its model card is in [docs/original-model-card-vibefinder-1.0.md](docs/original-model-card-vibefinder-1.0.md).
 
 **What was missing, and what this version adds:** the original required users to write profiles as code and explained results only with raw score math. VibeMatch lets users speak plainly, and adds Retrieval-Augmented Generation (RAG), a reliability layer, a web UI, logging and an evaluation harness.
 
