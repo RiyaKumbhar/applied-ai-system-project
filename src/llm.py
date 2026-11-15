@@ -12,7 +12,12 @@ import os
 import time
 
 log = logging.getLogger("vibematch.llm")
+REQUEST_TIMEOUT_MS = 30_000  # per attempt
 RETRY_DELAYS = (1.0, 3.0)  # seconds; retried only for rate limits / transient server errors
+
+
+def _is_timeout(exc: Exception) -> bool:
+    return "timeout" in type(exc).__name__.lower() or "timed out" in str(exc).lower()
 
 
 def _retry(call):
@@ -22,7 +27,7 @@ def _retry(call):
             return call()
         except Exception as exc:  # noqa: BLE001
             code = getattr(exc, "code", None)
-            if delay is None or code not in (429, 500, 502, 503, 504):
+            if delay is None or (code not in (429, 500, 502, 503, 504) and not _is_timeout(exc)):
                 raise
             log.warning("transient LLM error %s (attempt %d); retrying in %.0fs", code, attempt + 1, delay)
             time.sleep(delay)
@@ -37,7 +42,10 @@ GEMINI_MODEL = os.getenv("VIBEMATCH_GEMINI_MODEL", "gemini-3.1-flash-lite")
 class GeminiClient:
     def __init__(self, api_key: str | None = None, model: str = GEMINI_MODEL):
         from google import genai
-        self._client = genai.Client(api_key=api_key or os.environ["GEMINI_API_KEY"])
+        from google.genai import types
+        # Hard timeout so a stalled request can never freeze the app; the fallbacks take over.
+        self._client = genai.Client(api_key=api_key or os.environ["GEMINI_API_KEY"],
+                                    http_options=types.HttpOptions(timeout=REQUEST_TIMEOUT_MS))
         self.model = model
 
     def structured(self, system: str, user: str, schema):
