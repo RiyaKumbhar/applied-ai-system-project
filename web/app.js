@@ -122,7 +122,7 @@
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.detail || "Request failed");
       typing.remove();
-      const note = data.explain_source === "llm-grounded" ? "AI-written, grounded in song data" : "Rule-based explanation";
+      const note = { "llm-grounded": "AI-written, grounded in song data", "llm-partial": "AI-written, with some rule-based notes" }[data.explain_source] || "Rule-based explanation";
       bubble("bot", [renderReply(data.reply), data.songs.length ? h("span", { class: "src", text: note }) : null]);
       state.recs = data.songs; state.tab = "foryou"; state.genre = null; state.sort = "match"; els.sort.value = "match";
       els.subtitle.textContent = data.songs.length ? `${data.songs.length} songs for "${message}"` : "Try a different description.";

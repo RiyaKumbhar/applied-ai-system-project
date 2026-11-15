@@ -7,7 +7,26 @@ Both backends expose the same two methods, so the rest of the app never imports 
 
 from __future__ import annotations
 
+import logging
 import os
+import time
+
+log = logging.getLogger("vibematch.llm")
+RETRY_DELAYS = (1.0, 3.0)  # seconds; retried only for rate limits / transient server errors
+
+
+def _retry(call):
+    """Run call(), retrying transient Gemini errors (429 and 5xx) with backoff."""
+    for attempt, delay in enumerate((*RETRY_DELAYS, None)):
+        try:
+            return call()
+        except Exception as exc:  # noqa: BLE001
+            code = getattr(exc, "code", None)
+            if delay is None or code not in (429, 500, 502, 503, 504):
+                raise
+            log.warning("transient LLM error %s (attempt %d); retrying in %.0fs", code, attempt + 1, delay)
+            time.sleep(delay)
+
 
 # Cheapest Gemini text model that is still open to new accounts (free tier; $0.25 in / $1.50 out
 # per 1M tokens). gemini-2.5-flash-lite is cheaper on paper but the API now rejects it for new
@@ -23,22 +42,22 @@ class GeminiClient:
 
     def structured(self, system: str, user: str, schema):
         from google.genai import types
-        resp = self._client.models.generate_content(
+        resp = _retry(lambda: self._client.models.generate_content(
             model=self.model, contents=user,
             config=types.GenerateContentConfig(
                 system_instruction=system, response_mime_type="application/json",
                 response_schema=schema, temperature=0),
-        )
+        ))
         if resp.parsed is None:
             raise RuntimeError("Gemini returned no parsable output")
         return resp.parsed
 
     def generate(self, system: str, user: str) -> str:
         from google.genai import types
-        resp = self._client.models.generate_content(
+        resp = _retry(lambda: self._client.models.generate_content(
             model=self.model, contents=user,
             config=types.GenerateContentConfig(system_instruction=system, temperature=0.3),
-        )
+        ))
         return (resp.text or "").strip()
 
 

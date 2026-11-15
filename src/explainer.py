@@ -38,6 +38,12 @@ def cited_ids(text: str) -> List[str]:
     return re.findall(r"\[((?:song|genre|mood):[\w &-]+)\]", text)
 
 
+def missing_titles(text: str, recs: Sequence[Tuple[Dict, float, str]]) -> List[str]:
+    """Titles of recommended songs that the explanation never mentions."""
+    low = text.lower()
+    return [s["title"] for s, _, _ in recs if s["title"].lower() not in low]
+
+
 def fallback_explanation(recs: Sequence[Tuple[Dict, float, str]]) -> str:
     return "\n".join(f"{i}. {s['title']}: {why.replace('; ', ', ')}" for i, (s, _, why) in enumerate(recs, 1))
 
@@ -51,11 +57,26 @@ def explain(request: str, recs: Sequence[Tuple[Dict, float, str]], docs: Sequenc
         if client is None:
             from llm import get_client
             client = get_client()
-        text = client.generate(SYSTEM_PROMPT, build_prompt(request, recs, docs))
+        prompt = build_prompt(request, recs, docs)
+        text = client.generate(SYSTEM_PROMPT, prompt)
         valid = {d.doc_id for d in docs}
         cites = cited_ids(text)
         # Guardrail: must cite, and every citation must be a retrieved document.
         if text and cites and all(c in valid for c in cites):
+            # Completeness check: every recommendation must be explained. Retry once naming the gaps.
+            missing = missing_titles(text, recs)
+            if missing:
+                log.warning("explanation skipped %s; retrying once", missing)
+                retry = client.generate(
+                    SYSTEM_PROMPT, prompt + "\n\nYour previous answer skipped: " + ", ".join(missing)
+                    + ". Write one sentence for EVERY recommendation, in order, each ending with its [song:id].")
+                retry_cites = cited_ids(retry)
+                if retry and retry_cites and all(c in valid for c in retry_cites) and not missing_titles(retry, recs):
+                    return retry, "llm-grounded"
+                # Still incomplete: keep the good text and add rule-based lines for the gaps.
+                gaps = [(s, sc, why) for s, sc, why in recs if s["title"] in missing]
+                log.warning("explanation still incomplete; patching %d songs with rule-based lines", len(gaps))
+                return text + "\n" + fallback_explanation(gaps), "llm-partial"
             return text, "llm-grounded"
         log.warning("explanation rejected: missing or invalid citations %s; using rule-based fallback", cites)
     except Exception as exc:  # noqa: BLE001

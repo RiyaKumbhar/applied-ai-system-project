@@ -51,7 +51,8 @@ def test_explainer_requires_valid_citations():
     vm = VibeMatch(client=FakeClient(fail=True))
     recs = vm.ask("chill lofi study").recommendations
     docs = [vm.retriever.corpus[0]]
-    good = FakeClient(text=f"Nice. [{docs[0].doc_id}]")
+    names = " ".join(f"{song['title']}." for song, _, _ in recs)
+    good = FakeClient(text=f"{names} [{docs[0].doc_id}]")
     assert explain("q", recs, docs, good)[1] == "llm-grounded"
     assert explain("q", recs, docs, FakeClient(text="Nice. [song:99999]"))[1] == "rule-based-fallback"
     assert explain("q", recs, docs, FakeClient(text="No citation"))[1] == "rule-based-fallback"
@@ -77,3 +78,39 @@ def test_zero_score_songs_are_dropped():
     result = VibeMatch(client=FakeClient(fail=True)).ask("i am angry", k=12)
     assert result.recommendations
     assert all(score > 0.05 for _, score, _ in result.recommendations)
+
+
+class SeqClient(FakeClient):
+    """generate() returns successive texts, to test the retry-on-incomplete path."""
+
+    def __init__(self, texts):
+        super().__init__()
+        self.texts, self.calls = list(texts), 0
+
+    def generate(self, system, user):
+        self.calls += 1
+        return self.texts.pop(0)
+
+
+def _two_recs():
+    vm = VibeMatch(client=FakeClient(fail=True))
+    recs = vm.ask("chill lofi study", k=2).recommendations
+    return vm, recs
+
+
+def test_incomplete_explanation_is_retried_then_complete():
+    vm, recs = _two_recs()
+    (a, _, _), (b, _, _) = recs
+    docs = vm.retriever.corpus
+    client = SeqClient([f"{a['title']} fits. [song:{a['id']}]",
+                        f"{a['title']} fits. [song:{a['id']}] {b['title']} too. [song:{b['id']}]"])
+    text, source = explain("q", recs, docs, client)
+    assert source == "llm-grounded" and client.calls == 2 and b["title"] in text
+
+
+def test_still_incomplete_is_patched_with_rule_based_line():
+    vm, recs = _two_recs()
+    (a, _, _), (b, _, _) = recs
+    only_a = f"{a['title']} fits. [song:{a['id']}]"
+    text, source = explain("q", recs, vm.retriever.corpus, SeqClient([only_a, only_a]))
+    assert source == "llm-partial" and b["title"] in text

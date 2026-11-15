@@ -777,4 +777,46 @@ user text -> [Claude: structured parse] -> profile -> [deterministic scorer] -> 
 3. CLI: `python src/vibematch.py "upbeat latin party music"`.
 4. Tests: `pytest` (LLM calls are faked). Without a key everything still works via the fallbacks.
 
-Architecture: see [diagrams/architecture.mmd](diagrams/architecture.mmd).
+Architecture (source: [diagrams/architecture.mmd](diagrams/architecture.mmd)):
+
+```mermaid
+flowchart TD
+    %% ---------- Input ----------
+    U([User<br/>types a mood in the browser]) -->|POST /api/chat| API[FastAPI server<br/>validate input, rate limit]
+
+    %% ---------- Process ----------
+    subgraph PIPE[VibeMatch pipeline - src/vibematch.py]
+        direction TB
+        P[1. Parser<br/>text to profile]
+        S[2. Deterministic scorer<br/>recommender.py]
+        R[3. Retriever - RAG<br/>TF-IDF over song cards<br/>and genre/mood notes]
+        E[4. Explainer<br/>grounded, must cite sources]
+        C{Reliability checks<br/>valid citations?<br/>every song explained?}
+        FB[Rule-based fallback]
+        P --> S --> R --> E --> C
+        C -->|fails after one retry| FB
+    end
+    API --> P
+    D[(songs.csv)] --> S
+    K[(data/knowledge<br/>genre + mood notes)] --> R
+    P <-->|structured output| LLM[(LLM via llm.py<br/>Gemini default, Claude optional<br/>retry on 429/5xx)]
+    E <-->|generate| LLM
+    P -.->|API error or no usable fields| KW[Keyword parser fallback]
+    KW -.-> S
+
+    %% ---------- Output ----------
+    C -->|passes| OUT[Response: song cards,<br/>explanation, source labels]
+    FB --> OUT
+    OUT --> UI[Browser UI<br/>chat + song cards]
+
+    %% ---------- Human + testing checks ----------
+    UI --> H1([Human check 1 - the user<br/>sees the 'Understood as' profile,<br/>match bars and AI vs rule-based label])
+    LOG[(logs/vibematch.log<br/>every request and fallback reason)]
+    PIPE -.-> LOG
+    API -.-> LOG
+    LOG --> H2([Human check 2 - developer<br/>reviews logs and failures])
+    T[Tests - pytest<br/>25 tests with a fake LLM] -.->|verifies| PIPE
+    EV[Evaluator - eval/run_eval.py<br/>17 prompts: parse accuracy,<br/>ranking hit@3, citations,<br/>coverage, safety] -.->|measures| PIPE
+    EV --> REP[eval/report.md]
+    REP --> H2
+```
