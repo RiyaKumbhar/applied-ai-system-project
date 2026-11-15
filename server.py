@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import sys
 import time
 from collections import defaultdict, deque
@@ -17,6 +18,7 @@ from pydantic import BaseModel, Field
 from recommender import max_score
 from vibematch import VibeMatch
 
+log = logging.getLogger("vibematch.server")
 WEB_DIR = Path(__file__).resolve().parent / "web"
 MAX_MESSAGE_CHARS = 500
 RATE_LIMIT = 20          # requests ...
@@ -60,6 +62,7 @@ def create_app(engine: VibeMatch | None = None) -> FastAPI:
         while window and now - window[0] > RATE_WINDOW_SECONDS:
             window.popleft()
         if len(window) >= RATE_LIMIT:
+            log.warning("rate limit hit ip=%s", ip)
             raise HTTPException(429, "Too many requests - please wait a moment.")
         window.append(now)
 
@@ -93,6 +96,7 @@ def create_app(engine: VibeMatch | None = None) -> FastAPI:
 
     @app.exception_handler(Exception)
     async def unhandled(_: Request, exc: Exception):  # never leak internals to the browser
+        log.exception("unhandled error on %s", _.url.path)
         return JSONResponse({"detail": "Something went wrong. Please try again."}, status_code=500)
 
     app.mount("/", StaticFiles(directory=WEB_DIR, html=True), name="web")

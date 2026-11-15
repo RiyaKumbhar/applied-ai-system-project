@@ -7,10 +7,13 @@ unavailable we fall back to a keyword parser so the system never hard-fails.
 
 from __future__ import annotations
 
+import logging
 import re
 from typing import Dict, List, Optional, Tuple
 
 from pydantic import BaseModel, Field
+
+log = logging.getLogger("vibematch.parser")
 
 # Vocabulary of the catalog (data/songs.csv). Used to constrain/validate LLM output.
 GENRES = ["ambient", "blues", "classical", "country", "edm", "folk", "hip-hop", "indie pop",
@@ -132,6 +135,7 @@ def parse_request(text: str, client=None) -> Tuple[Dict, str]:
         prefs = validate_profile(client.structured(SYSTEM_PROMPT, text, ParsedRequest))
         if prefs:
             return prefs, "llm"
-    except Exception:  # noqa: BLE001 - any API/config failure degrades gracefully
-        pass
+        log.warning("LLM returned no usable fields; using keyword fallback")
+    except Exception as exc:  # noqa: BLE001 - any API/config failure degrades gracefully
+        log.warning("LLM parse failed (%s: %s); using keyword fallback", type(exc).__name__, str(exc)[:200])
     return keyword_parse(text), "keyword-fallback"

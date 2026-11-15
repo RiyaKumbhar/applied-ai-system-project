@@ -7,10 +7,13 @@ the deterministic score reasons.
 
 from __future__ import annotations
 
+import logging
 import re
 from typing import Dict, List, Sequence, Tuple
 
 from rag import Document
+
+log = logging.getLogger("vibematch.explainer")
 
 SYSTEM_PROMPT = (
     "You explain music recommendations to a listener. Use ONLY the facts in the provided "
@@ -54,6 +57,7 @@ def explain(request: str, recs: Sequence[Tuple[Dict, float, str]], docs: Sequenc
         # Guardrail: must cite, and every citation must be a retrieved document.
         if text and cites and all(c in valid for c in cites):
             return text, "llm-grounded"
-    except Exception:  # noqa: BLE001
-        pass
+        log.warning("explanation rejected: missing or invalid citations %s; using rule-based fallback", cites)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("LLM explain failed (%s: %s); using rule-based fallback", type(exc).__name__, str(exc)[:200])
     return fallback_explanation(recs), "rule-based-fallback"

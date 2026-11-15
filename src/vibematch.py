@@ -8,7 +8,9 @@ from __future__ import annotations
 import argparse
 import contextlib
 import io
+import logging
 import sys
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Tuple
@@ -20,7 +22,11 @@ from dotenv import load_dotenv
 from explainer import explain
 from nl_parser import parse_request
 from rag import Retriever, build_corpus, context_for
+from log import setup_logging
 from recommender import ARTIST_PENALTY, GENRE_PENALTY, load_songs, recommend_songs
+
+setup_logging()
+log = logging.getLogger("vibematch.pipeline")
 
 MIN_SCORE = 0.05  # recommendations scoring at or below this are dropped
 ROOT = Path(__file__).resolve().parent.parent
@@ -46,6 +52,7 @@ class VibeMatch:
         self.client = client
 
     def ask(self, request: str, k: int = 5) -> VibeResult:
+        t0 = time.perf_counter()
         prefs, parse_source = parse_request(request, self.client)
         recs = recommend_songs(prefs, self.songs, k=k,
                                artist_penalty=ARTIST_PENALTY, genre_penalty=GENRE_PENALTY) if prefs else []
@@ -53,6 +60,8 @@ class VibeMatch:
         recs = [r for r in recs if r[1] > MIN_SCORE]
         docs = context_for(self.retriever, request, [s for s, _, _ in recs])
         text, explain_source = explain(request, recs, docs, self.client)
+        log.info("ask chars=%d parse=%s explain=%s songs=%d profile=%s %.2fs", len(request), parse_source,
+                 explain_source, len(recs), prefs, time.perf_counter() - t0)
         return VibeResult(request, prefs, parse_source, recs, text, explain_source, [d.doc_id for d in docs])
 
 
