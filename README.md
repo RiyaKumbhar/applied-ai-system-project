@@ -752,3 +752,20 @@ Full model card: [**Model Card**](model_card.md)
 **How recommenders turn data into predictions.** This project showed me that a recommender is mostly a set of rules and weights. Each song gets points for matching genre, mood and energy, and the highest scores win. Because every score comes with reasons, I could always say why a song was picked. But the weights are opinions. When I made genre worth 2 points, songs like *Gym Hero* showed up for "Happy Pop" listeners, because "pop" counted for more than "happy". Changing the weights, switching ranking modes or adding a diversity penalty gave different lists, and none was simply "more accurate".
 
 **Where bias or unfairness can show up.** Bias came from small choices: which weights I picked, which songs are in the catalog, and what the system treats as a match. A genre with two songs gets repeated. A listener who types `Pop` instead of `pop` loses their genre signal. A user with mixed taste gets answers that fit neither half. Real systems are much bigger, but the same kinds of choices can quietly leave some listeners out. I also learned to check AI-written work against the real data, since several details it suggested needed correcting.
+
+---
+
+## VibeMatch: LLM layer (natural language + RAG)
+
+```
+user text -> [Claude: structured parse] -> profile -> [deterministic scorer] -> top-k
+                                                              |
+         [TF-IDF retrieval: song cards + genre/mood notes] ---+--> [Claude: grounded explanation w/ citations]
+```
+
+- `src/nl_parser.py` - Claude (`claude-haiku-5-5`) fills a Pydantic schema via structured outputs; output is validated against the catalog vocabulary. Falls back to a keyword parser if the API fails.
+- `src/rag.py` - local TF-IDF retriever over song cards plus `data/knowledge/` notes (swappable for embeddings).
+- `src/explainer.py` - Claude (`claude-sonnet-5-5`) explains picks using only retrieved context and must cite doc ids; invalid or missing citations fall back to the rule-based reasons.
+- Ranking itself stays deterministic and testable; the LLM never picks songs.
+
+Run: set `ANTHROPIC_API_KEY` (see `.env.example`), then `python src/vibematch.py "upbeat latin party music"` or `streamlit run app.py`. Without a key everything still works via the fallbacks. Tests: `pytest` (LLM calls are faked).
