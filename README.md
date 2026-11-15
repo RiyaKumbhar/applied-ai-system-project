@@ -763,9 +763,16 @@ user text -> [Claude: structured parse] -> profile -> [deterministic scorer] -> 
          [TF-IDF retrieval: song cards + genre/mood notes] ---+--> [Claude: grounded explanation w/ citations]
 ```
 
-- `src/nl_parser.py` - Claude (`claude-haiku-5-5`) fills a Pydantic schema via structured outputs; output is validated against the catalog vocabulary. Falls back to a keyword parser if the API fails.
+- `src/nl_parser.py` - the LLM (Gemini by default, via `src/llm.py`) fills a Pydantic schema via structured outputs; output is validated against the catalog vocabulary. Falls back to a keyword parser if the API fails.
 - `src/rag.py` - local TF-IDF retriever over song cards plus `data/knowledge/` notes (swappable for embeddings).
-- `src/explainer.py` - Claude (`claude-sonnet-5-5`) explains picks using only retrieved context and must cite doc ids; invalid or missing citations fall back to the rule-based reasons.
+- `src/explainer.py` - the LLM explains picks using only retrieved context and must cite doc ids; invalid or missing citations fall back to the rule-based reasons.
 - Ranking itself stays deterministic and testable; the LLM never picks songs.
 
-Run: set `ANTHROPIC_API_KEY` (see `.env.example`), then `python src/vibematch.py "upbeat latin party music"` or `streamlit run app.py`. Without a key everything still works via the fallbacks. Tests: `pytest` (LLM calls are faked).
+### Run it
+
+1. Put `GEMINI_API_KEY=...` in `.env` (see `.env.example`). Default model: `gemini-3.1-flash-lite`. Set `VIBEMATCH_PROVIDER=anthropic` to use Claude instead.
+2. Web app: `uvicorn server:app --reload`, then open http://localhost:8000 (chat on the right, song cards on the left).
+3. CLI: `python src/vibematch.py "upbeat latin party music"`.
+4. Tests: `pytest` (LLM calls are faked). Without a key everything still works via the fallbacks.
+
+Architecture: see [diagrams/architecture.mmd](diagrams/architecture.mmd).

@@ -1,5 +1,14 @@
-flowchart TD
-    A[User Preferences] --> B[Recommender]
-    C[(songs.csv)] --> B
-    B --> D[Scoring and Ranking]
-    D --> E[Top-K Recommendations]
+flowchart LR
+    U[User in browser<br/>chat + song cards] -->|POST /api/chat| API[FastAPI server.py]
+    API --> P[nl_parser<br/>text to profile]
+    P <-->|structured output| LLM[(Gemini via llm.py<br/>or Claude)]
+    P -->|profile, or keyword fallback| S[Deterministic scorer<br/>recommender.py]
+    D[(songs.csv)] --> S
+    S -->|top-k songs| R[rag.py retriever<br/>TF-IDF over song cards,<br/>genre and mood notes]
+    K[(data/knowledge)] --> R
+    R -->|retrieved context| E[explainer<br/>grounded + cited]
+    E <-->|generate| LLM
+    E -->|invalid citations or API error| F[Rule-based fallback]
+    E --> API
+    F --> API
+    API -->|songs, reply, sources| U

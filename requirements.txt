@@ -6,3 +6,6 @@ scikit-learn
 pydantic
 python-dotenv
 google-genai
+fastapi
+uvicorn
+httpx
