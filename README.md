@@ -4,6 +4,8 @@ Type how you feel ("cozy rainy-day study music, no lyrics") and VibeMatch turns 
 
 ![VibeMatch web app: song cards on the left, mood chat assistant on the right](assets/vibematch-ui.png)
 
+**Demo video:** [Watch the screen recording walkthrough on Loom](https://www.loom.com/share/c8b2d74e1da1458eafe78d0d37369718)
+
 ## Built on my Module 1-3 project
 
 This is an evolution of **Music Recommender Simulation (VibeFinder 1.0)**, my Module 1-3 project. The original was a content-based recommender: you gave it a hand-written taste profile (genre, mood, energy, plus optional tags, decade, popularity, language, instrumental and explicit flags) and it scored all 42 songs in `data/songs.csv`, returning the top 5 with the reasons behind each score. It had three ranking modes, a diversity penalty, and a model card analysing its biases. The original README is preserved in [docs/original-module1-3-README.md](docs/original-module1-3-README.md) and its model card is in [docs/original-model-card-vibefinder-1.0.md](docs/original-model-card-vibefinder-1.0.md).
