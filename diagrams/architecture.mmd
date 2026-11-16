@@ -5,35 +5,49 @@ flowchart TD
     %% ---------- Process ----------
     subgraph PIPE[VibeMatch pipeline - src/vibematch.py]
         direction TB
-        P[1. Parser<br/>text to profile]
-        S[2. Deterministic scorer<br/>recommender.py]
-        R[3. Retriever - RAG<br/>TF-IDF over song cards<br/>and genre/mood notes]
-        E[4. Explainer<br/>grounded, must cite sources]
-        C{Reliability checks<br/>valid citations?<br/>every song explained?}
+        subgraph AG[Agent loop - src/agent.py, max 3 revisions]
+            direction TB
+            P[parse_request tool<br/>text to profile]
+            PL[plan<br/>hard constraints vs soft preferences]
+            S[search_songs tool<br/>deterministic scorer]
+            CK{check_playlist tool<br/>constraints kept?<br/>enough songs? strong match?}
+            DEC[decide_revision<br/>filter_violations, broaden or accept]
+            AP[apply_revision tool<br/>reverts if results get worse]
+            P --> PL --> S --> CK
+            CK -->|fails| DEC --> AP --> CK
+        end
+        R[retrieve_context tool - RAG<br/>TF-IDF over song cards,<br/>genre and mood notes]
+        E[explain tool<br/>one grounded, cited reason per song]
+        C{Reliability checks<br/>valid citations? right song id?<br/>every song explained?}
         FB[Rule-based fallback]
-        P --> S --> R --> E --> C
+        CK -->|passes, or accept| R --> E --> C
         C -->|fails after one retry| FB
     end
     API --> P
     D[(songs.csv)] --> S
     K[(data/knowledge<br/>genre + mood notes)] --> R
-    P <-->|structured output| LLM[(LLM via llm.py<br/>Gemini default, Claude optional<br/>retry on 429/5xx)]
+    P <-->|structured output| LLM[(LLM via llm.py<br/>Gemini default, Claude optional<br/>timeout + retry on 429/5xx)]
+    DEC <-->|structured output| LLM
     E <-->|generate| LLM
     P -.->|API error or no usable fields| KW[Keyword parser fallback]
-    KW -.-> S
+    KW -.-> PL
+    DEC -.->|LLM unavailable or invalid choice| POL[Deterministic default policy]
+    POL -.-> AP
 
     %% ---------- Output ----------
-    C -->|passes| OUT[Response: song cards,<br/>explanation, source labels]
+    C -->|passes| OUT[Response: song cards with a brief reason each,<br/>confidence, reasoning steps, source labels]
     FB --> OUT
-    OUT --> UI[Browser UI<br/>chat + song cards]
+    OUT --> UI[Browser UI<br/>chat + song cards + How I decided]
 
     %% ---------- Human + testing checks ----------
-    UI --> H1([Human check 1 - the user<br/>sees the 'Understood as' profile,<br/>match bars and AI vs rule-based label])
-    LOG[(logs/vibematch.log<br/>every request and fallback reason)]
+    UI --> H1([Human check 1 - the user<br/>sees 'Understood as', match bars,<br/>confidence and the agent's steps])
+    LOG[(logs/vibematch.log<br/>every request, agent step and fallback reason)]
     PIPE -.-> LOG
     API -.-> LOG
-    LOG --> H2([Human check 2 - developer<br/>reviews logs and failures])
-    T[Tests - pytest<br/>31 tests with a fake LLM] -.->|verifies| PIPE
-    EV[Evaluator - eval/run_eval.py<br/>17 prompts: parse accuracy,<br/>ranking hit@3, citations,<br/>coverage, safety] -.->|measures| PIPE
-    EV --> REP[eval/report.md]
+    LOG --> H2([Human check 2 - developer<br/>reviews logs, traces and failures])
+    TR[(docs/agent_traces.json<br/>ai_interactions.md)] --> H2
+    AG -.-> TR
+    T[Tests - pytest<br/>42 tests with a fake LLM] -.->|verifies| PIPE
+    EV[Evaluators - eval/<br/>run_eval.py: 17 prompts<br/>compare_variants.py: RAG and voice before/after] -.->|measures| PIPE
+    EV --> REP[eval/report.md and<br/>eval/comparison_report.md]
     REP --> H2

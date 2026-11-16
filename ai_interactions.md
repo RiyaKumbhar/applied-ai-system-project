@@ -129,3 +129,89 @@ The AI wrote the first version of the dataclass, the registry and the `--mode` /
 - **Hand-checked one score.** Mood-First, *Sunrise City* for High-Energy Pop: 1.0 (genre) + 2.5 (mood) + 1.38 (energy) = 4.88 / 5.00. The program printed 4.88.
 - **Bad input.** `--mode bogus` gives a clear error that lists the valid modes. `pytest` still passes (2 passed).
 - **A limit of this pattern.** These strategies differ only in numbers. If I wanted a mode that works differently, such as a hard filter that removes explicit songs, the dataclass would not be enough. That would need a class or a function per strategy.
+
+---
+
+<!-- agent-traces:start -->
+
+## Applied AI project: VibeMatch agent reasoning traces
+
+The agent ([src/agent.py](src/agent.py)) runs plan, act (tools), check, decide, revise. The LLM never ranks songs: it parses the request and, only when a check fails, chooses one revision from a fixed menu (`filter_violations`, `broaden`, `accept`). If the LLM is unavailable a deterministic policy makes the same choice. Machine-readable log: [docs/agent_traces.json](docs/agent_traces.json). Regenerate with `python eval/agent_demo.py`.
+
+### Request: "instrumental heavy metal"
+
+Result: 5 songs, confidence **medium**, explanation source `llm-grounded`, 93.3s.
+
+| # | Kind | Step | Reasoning | Output |
+|---|---|---|---|---|
+| 1 | tool | `parse_request` | Turn the free-text request into a structured profile. | `{"profile": {"genre": "metal", "instrumental": true}, "source": "llm"}` |
+| 2 | plan | `plan` | Treat instrumental/clean/language as hard constraints and the rest as soft preferences. | `{"hard_constraints": {"instrumental": true}, "soft_preferences": {"genre": "metal"}}` |
+| 3 | tool | `search_songs` | Rank the catalog with the deterministic scorer. | `{"top": ["Iron Requiem", "Midnight Coding", "Spacewalk Thoughts", "Night Drive Loop", "Quiet Cathedral"]}` |
+| 4 | check | `check_playlist` | Verify hard constraints, result count and match quality. | `{"passed": false, "issues": [{"type": "constraint_violation", "constraints": {"instrumental": true}, "titles": ["Iron Requiem"]}]}` |
+| 5 | decision | `decide_revision` | The song Iron Requiem was flagged for violating the instrumental constraint, so I must filter the results to ensure only instrumental tracks remain. | `{"action": "filter_violations", "drop_field": null, "decided_by": "llm"}` |
+| 6 | tool | `apply_revision` | Applied 'filter_violations' and re-searched. | `{"profile": {"genre": "metal", "instrumental": true}, "top": ["Midnight Coding", "Spacewalk Thoughts", "Night Drive Loop", "Quiet Cathedral", "Blue Note Lounge"]}` |
+| 7 | check | `check_playlist` | Re-check after the revision. | `{"passed": false, "issues": [{"type": "weak_match", "best_ratio": 0.2}]}` |
+| 8 | decision | `decide_revision` | Too few or weak matches, so drop the 'genre' preference. | `{"action": "broaden", "drop_field": "genre", "decided_by": "default-policy"}` |
+| 9 | tool | `apply_revision` | Applied 'broaden' (drop genre) and re-searched. | `{"profile": {"instrumental": true}, "top": ["Midnight Coding", "Spacewalk Thoughts", "Night Drive Loop", "Quiet Cathedral", "Blue Note Lounge"]}` |
+| 10 | check | `check_playlist` | Re-check after the revision. | `{"passed": true, "issues": []}` |
+| 11 | result | `finish` | Finished after 2 revision(s) with medium confidence. | `{"rounds": 2, "confidence": "medium", "songs": 5}` |
+| 12 | tool | `retrieve_context` | Fetch song cards and genre/mood notes to ground the explanation. | `{"documents": ["song:2", "song:6", "song:8", "song:12", "song:29", "genre:metal", "mood:intense", "mood:angry"]}` |
+| 13 | tool | `explain` | Write one grounded, cited reason per song and verify it. | `{"source": "llm-grounded"}` |
+
+Final songs: Midnight Coding (lofi, instrumental=True, explicit=False); Spacewalk Thoughts (ambient, instrumental=True, explicit=False); Night Drive Loop (synthwave, instrumental=True, explicit=False); Quiet Cathedral (classical, instrumental=True, explicit=False); Blue Note Lounge (jazz, instrumental=True, explicit=False)
+
+### Request: "clean explicit-free hip-hop for the gym"
+
+Result: 5 songs, confidence **medium**, explanation source `llm-grounded`, 4.4s.
+
+| # | Kind | Step | Reasoning | Output |
+|---|---|---|---|---|
+| 1 | tool | `parse_request` | Turn the free-text request into a structured profile. | `{"profile": {"genre": "hip-hop", "tags": ["pumped", "motivational"], "explicit": false}, "source": "llm"}` |
+| 2 | plan | `plan` | Treat instrumental/clean/language as hard constraints and the rest as soft preferences. | `{"hard_constraints": {"explicit": false}, "soft_preferences": {"genre": "hip-hop", "tags": ["pumped", "motivational"]}}` |
+| 3 | tool | `search_songs` | Rank the catalog with the deterministic scorer. | `{"top": ["Block Party", "Gym Hero", "Neon Pulse", "Midnight Coding", "Storm Runner"]}` |
+| 4 | check | `check_playlist` | Verify hard constraints, result count and match quality. | `{"passed": false, "issues": [{"type": "constraint_violation", "constraints": {"explicit": false}, "titles": ["Block Party"]}]}` |
+| 5 | decision | `decide_revision` | The song 'Block Party' violates the explicit-free constraint, so it must be removed and replaced with a clean alternative. | `{"action": "filter_violations", "drop_field": null, "decided_by": "llm"}` |
+| 6 | tool | `apply_revision` | Applied 'filter_violations' and re-searched. | `{"profile": {"genre": "hip-hop", "tags": ["pumped", "motivational"], "explicit": false}, "top": ["Gym Hero", "Neon Pulse", "Midnight Coding", "Storm Runner", "Spacewal...` |
+| 7 | check | `check_playlist` | Re-check after the revision. | `{"passed": true, "issues": []}` |
+| 8 | result | `finish` | Finished after 1 revision(s) with medium confidence. | `{"rounds": 1, "confidence": "medium", "songs": 5}` |
+| 9 | tool | `retrieve_context` | Fetch song cards and genre/mood notes to ground the explanation. | `{"documents": ["song:5", "song:17", "song:2", "song:3", "song:6", "mood:confident", "genre:hip-hop"]}` |
+| 10 | tool | `explain` | Write one grounded, cited reason per song and verify it. | `{"source": "llm-grounded"}` |
+
+Final songs: Gym Hero (pop, instrumental=False, explicit=False); Neon Pulse (edm, instrumental=False, explicit=False); Midnight Coding (lofi, instrumental=True, explicit=False); Storm Runner (rock, instrumental=False, explicit=False); Spacewalk Thoughts (ambient, instrumental=True, explicit=False)
+
+### Request: "romantic jazz instrumental from the 1960s"
+
+Result: 5 songs, confidence **medium**, explanation source `llm-grounded`, 4.0s.
+
+| # | Kind | Step | Reasoning | Output |
+|---|---|---|---|---|
+| 1 | tool | `parse_request` | Turn the free-text request into a structured profile. | `{"profile": {"genre": "jazz", "mood": "romantic", "tags": ["romantic"], "decade": 1960, "instrumental": true}, "source": "llm"}` |
+| 2 | plan | `plan` | Treat instrumental/clean/language as hard constraints and the rest as soft preferences. | `{"hard_constraints": {"instrumental": true}, "soft_preferences": {"genre": "jazz", "mood": "romantic", "tags": ["romantic"], "decade": 1960}}` |
+| 3 | tool | `search_songs` | Rank the catalog with the deterministic scorer. | `{"top": ["Blue Note Lounge", "Late Night Bebop", "Velvet Hours", "Midnight Coding", "Spacewalk Thoughts"]}` |
+| 4 | check | `check_playlist` | Verify hard constraints, result count and match quality. | `{"passed": false, "issues": [{"type": "constraint_violation", "constraints": {"instrumental": true}, "titles": ["Velvet Hours"]}]}` |
+| 5 | decision | `decide_revision` | The song Velvet Hours was flagged for violating the instrumental constraint, so I must filter it out and find a replacement that strictly adheres to the user's requirements. | `{"action": "filter_violations", "drop_field": null, "decided_by": "llm"}` |
+| 6 | tool | `apply_revision` | Applied 'filter_violations' and re-searched. | `{"profile": {"genre": "jazz", "mood": "romantic", "tags": ["romantic"], "decade": 1960, "instrumental": true}, "top": ["Blue Note Lounge", "Late Night Bebop", "Midnigh...` |
+| 7 | check | `check_playlist` | Re-check after the revision. | `{"passed": true, "issues": []}` |
+| 8 | result | `finish` | Finished after 1 revision(s) with medium confidence. | `{"rounds": 1, "confidence": "medium", "songs": 5}` |
+| 9 | tool | `retrieve_context` | Fetch song cards and genre/mood notes to ground the explanation. | `{"documents": ["song:29", "song:30", "song:2", "song:6", "song:8", "mood:romantic", "genre:jazz", "mood:chill"]}` |
+| 10 | tool | `explain` | Write one grounded, cited reason per song and verify it. | `{"source": "llm-grounded"}` |
+
+Final songs: Blue Note Lounge (jazz, instrumental=True, explicit=False); Late Night Bebop (jazz, instrumental=True, explicit=False); Midnight Coding (lofi, instrumental=True, explicit=False); Spacewalk Thoughts (ambient, instrumental=True, explicit=False); Night Drive Loop (synthwave, instrumental=True, explicit=False)
+
+### Request: "i am angry"
+
+Result: 4 songs, confidence **high**, explanation source `llm-grounded`, 2.1s.
+
+| # | Kind | Step | Reasoning | Output |
+|---|---|---|---|---|
+| 1 | tool | `parse_request` | Turn the free-text request into a structured profile. | `{"profile": {"mood": "angry", "tags": ["aggressive"]}, "source": "llm"}` |
+| 2 | plan | `plan` | Treat instrumental/clean/language as hard constraints and the rest as soft preferences. | `{"hard_constraints": {}, "soft_preferences": {"mood": "angry", "tags": ["aggressive"]}}` |
+| 3 | tool | `search_songs` | Rank the catalog with the deterministic scorer. | `{"top": ["Iron Requiem", "Storm Runner", "Gym Hero", "Bass Cathedral"]}` |
+| 4 | check | `check_playlist` | Verify hard constraints, result count and match quality. | `{"passed": true, "issues": []}` |
+| 5 | result | `finish` | Finished after 0 revision(s) with high confidence. | `{"rounds": 0, "confidence": "high", "songs": 4}` |
+| 6 | tool | `retrieve_context` | Fetch song cards and genre/mood notes to ground the explanation. | `{"documents": ["song:14", "song:3", "song:5", "song:38", "mood:angry"]}` |
+| 7 | tool | `explain` | Write one grounded, cited reason per song and verify it. | `{"source": "llm-grounded"}` |
+
+Final songs: Iron Requiem (metal, instrumental=False, explicit=False); Storm Runner (rock, instrumental=False, explicit=False); Gym Hero (pop, instrumental=False, explicit=False); Bass Cathedral (edm, instrumental=True, explicit=False)
+
+<!-- agent-traces:end -->

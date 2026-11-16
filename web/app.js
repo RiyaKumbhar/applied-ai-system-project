@@ -110,6 +110,13 @@
     return frag;
   }
 
+  // Collapsible agent reasoning trace ("How I decided"), built with textContent only.
+  function stepsPanel(steps) {
+    if (!steps || !steps.length) return null;
+    return h("details", { class: "steps" }, h("summary", { text: `How I decided (${steps.length} steps)` }),
+      h("ol", {}, steps.map((s) => h("li", {}, h("code", { text: s.name }), ` ${s.thought}`))));
+  }
+
   async function ask(message) {
     message = message.trim();
     if (!message || state.busy) return;
@@ -126,8 +133,10 @@
       const note = { "llm-grounded": "AI-written, grounded in song data", "llm-partial": "AI-written, with some rule-based notes" }[data.explain_source] || "Rule-based explanation";
       bubble("bot", data.songs.length ? [
         h("div", { text: `Here ${data.songs.length === 1 ? "is 1 pick" : `are ${data.songs.length} picks`} for you:` }),
+        ...(data.notes || []).map((n) => h("div", { class: "note", text: n })),
         h("ul", {}, data.songs.map((s) => h("li", {}, h("strong", { text: s.title }), ` - ${s.reason}`))),
-        h("span", { class: "src", text: note })] : renderReply(data.reply));
+        h("span", { class: "src", text: `${note} - confidence: ${data.confidence}` }),
+        stepsPanel(data.steps)] : renderReply(data.reply));
       state.recs = data.songs; state.tab = "foryou"; state.genre = null; state.sort = "match"; els.sort.value = "match";
       els.subtitle.textContent = data.songs.length ? `${data.songs.length} songs for "${message}"` : "Try a different description.";
       showProfile(data.profile); render();

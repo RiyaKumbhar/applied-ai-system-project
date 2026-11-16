@@ -47,7 +47,7 @@
     "top3": [
       "Midnight Coding",
       "Library Rain",
-      "Rooftop Rain"
+      "Spacewalk Thoughts"
     ]
   },
   {
@@ -213,7 +213,7 @@
     "coverage": 1.0,
     "safety_ok": true,
     "parse_source": "llm",
-    "explain_source": "llm-grounded",
+    "explain_source": "rule-based-fallback",
     "profile": {
       "genre": "ambient",
       "mood": "peaceful",
@@ -333,7 +333,7 @@
     "coverage": 1.0,
     "safety_ok": true,
     "parse_source": "llm",
-    "explain_source": "rule-based-fallback",
+    "explain_source": "llm-grounded",
     "profile": {
       "genre": "lofi",
       "mood": "chill"

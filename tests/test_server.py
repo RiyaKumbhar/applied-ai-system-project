@@ -67,3 +67,9 @@ def test_catalog():
 def test_chat_songs_include_brief_reason():
     songs = make_client(fail=True).post("/api/chat", json={"message": "chill lofi"}).json()["songs"]
     assert songs and all(s["reason"] and isinstance(s["why"], list) for s in songs)
+
+
+def test_chat_returns_agent_steps_and_confidence():
+    body = make_client(fail=True).post("/api/chat", json={"message": "instrumental heavy metal"}).json()
+    assert body["confidence"] in ("high", "medium", "low")
+    assert body["steps"] and {"kind", "name", "thought"} <= body["steps"][0].keys()

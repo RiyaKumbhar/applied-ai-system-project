@@ -1,0 +1,777 @@
+[
+  {
+    "request": "instrumental heavy metal",
+    "confidence": "medium",
+    "explain_source": "llm-grounded",
+    "seconds": 93.30316070793197,
+    "profile": {
+      "instrumental": true
+    },
+    "songs": [
+      "Midnight Coding (lofi, instrumental=True, explicit=False)",
+      "Spacewalk Thoughts (ambient, instrumental=True, explicit=False)",
+      "Night Drive Loop (synthwave, instrumental=True, explicit=False)",
+      "Quiet Cathedral (classical, instrumental=True, explicit=False)",
+      "Blue Note Lounge (jazz, instrumental=True, explicit=False)"
+    ],
+    "trace": [
+      {
+        "step": 1,
+        "kind": "tool",
+        "name": "parse_request",
+        "thought": "Turn the free-text request into a structured profile.",
+        "input": {
+          "request": "instrumental heavy metal"
+        },
+        "output": {
+          "profile": {
+            "genre": "metal",
+            "instrumental": true
+          },
+          "source": "llm"
+        }
+      },
+      {
+        "step": 2,
+        "kind": "plan",
+        "name": "plan",
+        "thought": "Treat instrumental/clean/language as hard constraints and the rest as soft preferences.",
+        "input": {},
+        "output": {
+          "hard_constraints": {
+            "instrumental": true
+          },
+          "soft_preferences": {
+            "genre": "metal"
+          }
+        }
+      },
+      {
+        "step": 3,
+        "kind": "tool",
+        "name": "search_songs",
+        "thought": "Rank the catalog with the deterministic scorer.",
+        "input": {
+          "profile": {
+            "genre": "metal",
+            "instrumental": true
+          },
+          "k": 5
+        },
+        "output": {
+          "top": [
+            "Iron Requiem",
+            "Midnight Coding",
+            "Spacewalk Thoughts",
+            "Night Drive Loop",
+            "Quiet Cathedral"
+          ]
+        }
+      },
+      {
+        "step": 4,
+        "kind": "check",
+        "name": "check_playlist",
+        "thought": "Verify hard constraints, result count and match quality.",
+        "input": {},
+        "output": {
+          "passed": false,
+          "issues": [
+            {
+              "type": "constraint_violation",
+              "constraints": {
+                "instrumental": true
+              },
+              "titles": [
+                "Iron Requiem"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "step": 5,
+        "kind": "decision",
+        "name": "decide_revision",
+        "thought": "The song Iron Requiem was flagged for violating the instrumental constraint, so I must filter the results to ensure only instrumental tracks remain.",
+        "input": {
+          "issues": [
+            "constraint_violation"
+          ]
+        },
+        "output": {
+          "action": "filter_violations",
+          "drop_field": null,
+          "decided_by": "llm"
+        }
+      },
+      {
+        "step": 6,
+        "kind": "tool",
+        "name": "apply_revision",
+        "thought": "Applied 'filter_violations' and re-searched.",
+        "input": {
+          "action": "filter_violations",
+          "drop_field": null
+        },
+        "output": {
+          "profile": {
+            "genre": "metal",
+            "instrumental": true
+          },
+          "top": [
+            "Midnight Coding",
+            "Spacewalk Thoughts",
+            "Night Drive Loop",
+            "Quiet Cathedral",
+            "Blue Note Lounge"
+          ]
+        }
+      },
+      {
+        "step": 7,
+        "kind": "check",
+        "name": "check_playlist",
+        "thought": "Re-check after the revision.",
+        "input": {},
+        "output": {
+          "passed": false,
+          "issues": [
+            {
+              "type": "weak_match",
+              "best_ratio": 0.2
+            }
+          ]
+        }
+      },
+      {
+        "step": 8,
+        "kind": "decision",
+        "name": "decide_revision",
+        "thought": "Too few or weak matches, so drop the 'genre' preference.",
+        "input": {
+          "issues": [
+            "weak_match"
+          ]
+        },
+        "output": {
+          "action": "broaden",
+          "drop_field": "genre",
+          "decided_by": "default-policy"
+        }
+      },
+      {
+        "step": 9,
+        "kind": "tool",
+        "name": "apply_revision",
+        "thought": "Applied 'broaden' (drop genre) and re-searched.",
+        "input": {
+          "action": "broaden",
+          "drop_field": "genre"
+        },
+        "output": {
+          "profile": {
+            "instrumental": true
+          },
+          "top": [
+            "Midnight Coding",
+            "Spacewalk Thoughts",
+            "Night Drive Loop",
+            "Quiet Cathedral",
+            "Blue Note Lounge"
+          ]
+        }
+      },
+      {
+        "step": 10,
+        "kind": "check",
+        "name": "check_playlist",
+        "thought": "Re-check after the revision.",
+        "input": {},
+        "output": {
+          "passed": true,
+          "issues": []
+        }
+      },
+      {
+        "step": 11,
+        "kind": "result",
+        "name": "finish",
+        "thought": "Finished after 2 revision(s) with medium confidence.",
+        "input": {},
+        "output": {
+          "rounds": 2,
+          "confidence": "medium",
+          "songs": 5
+        }
+      },
+      {
+        "step": 12,
+        "kind": "tool",
+        "name": "retrieve_context",
+        "thought": "Fetch song cards and genre/mood notes to ground the explanation.",
+        "input": {},
+        "output": {
+          "documents": [
+            "song:2",
+            "song:6",
+            "song:8",
+            "song:12",
+            "song:29",
+            "genre:metal",
+            "mood:intense",
+            "mood:angry"
+          ]
+        }
+      },
+      {
+        "step": 13,
+        "kind": "tool",
+        "name": "explain",
+        "thought": "Write one grounded, cited reason per song and verify it.",
+        "input": {},
+        "output": {
+          "source": "llm-grounded"
+        }
+      }
+    ]
+  },
+  {
+    "request": "clean explicit-free hip-hop for the gym",
+    "confidence": "medium",
+    "explain_source": "llm-grounded",
+    "seconds": 4.4215347920544446,
+    "profile": {
+      "genre": "hip-hop",
+      "tags": [
+        "pumped",
+        "motivational"
+      ],
+      "explicit": false
+    },
+    "songs": [
+      "Gym Hero (pop, instrumental=False, explicit=False)",
+      "Neon Pulse (edm, instrumental=False, explicit=False)",
+      "Midnight Coding (lofi, instrumental=True, explicit=False)",
+      "Storm Runner (rock, instrumental=False, explicit=False)",
+      "Spacewalk Thoughts (ambient, instrumental=True, explicit=False)"
+    ],
+    "trace": [
+      {
+        "step": 1,
+        "kind": "tool",
+        "name": "parse_request",
+        "thought": "Turn the free-text request into a structured profile.",
+        "input": {
+          "request": "clean explicit-free hip-hop for the gym"
+        },
+        "output": {
+          "profile": {
+            "genre": "hip-hop",
+            "tags": [
+              "pumped",
+              "motivational"
+            ],
+            "explicit": false
+          },
+          "source": "llm"
+        }
+      },
+      {
+        "step": 2,
+        "kind": "plan",
+        "name": "plan",
+        "thought": "Treat instrumental/clean/language as hard constraints and the rest as soft preferences.",
+        "input": {},
+        "output": {
+          "hard_constraints": {
+            "explicit": false
+          },
+          "soft_preferences": {
+            "genre": "hip-hop",
+            "tags": [
+              "pumped",
+              "motivational"
+            ]
+          }
+        }
+      },
+      {
+        "step": 3,
+        "kind": "tool",
+        "name": "search_songs",
+        "thought": "Rank the catalog with the deterministic scorer.",
+        "input": {
+          "profile": {
+            "genre": "hip-hop",
+            "tags": [
+              "pumped",
+              "motivational"
+            ],
+            "explicit": false
+          },
+          "k": 5
+        },
+        "output": {
+          "top": [
+            "Block Party",
+            "Gym Hero",
+            "Neon Pulse",
+            "Midnight Coding",
+            "Storm Runner"
+          ]
+        }
+      },
+      {
+        "step": 4,
+        "kind": "check",
+        "name": "check_playlist",
+        "thought": "Verify hard constraints, result count and match quality.",
+        "input": {},
+        "output": {
+          "passed": false,
+          "issues": [
+            {
+              "type": "constraint_violation",
+              "constraints": {
+                "explicit": false
+              },
+              "titles": [
+                "Block Party"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "step": 5,
+        "kind": "decision",
+        "name": "decide_revision",
+        "thought": "The song 'Block Party' violates the explicit-free constraint, so it must be removed and replaced with a clean alternative.",
+        "input": {
+          "issues": [
+            "constraint_violation"
+          ]
+        },
+        "output": {
+          "action": "filter_violations",
+          "drop_field": null,
+          "decided_by": "llm"
+        }
+      },
+      {
+        "step": 6,
+        "kind": "tool",
+        "name": "apply_revision",
+        "thought": "Applied 'filter_violations' and re-searched.",
+        "input": {
+          "action": "filter_violations",
+          "drop_field": null
+        },
+        "output": {
+          "profile": {
+            "genre": "hip-hop",
+            "tags": [
+              "pumped",
+              "motivational"
+            ],
+            "explicit": false
+          },
+          "top": [
+            "Gym Hero",
+            "Neon Pulse",
+            "Midnight Coding",
+            "Storm Runner",
+            "Spacewalk Thoughts"
+          ]
+        }
+      },
+      {
+        "step": 7,
+        "kind": "check",
+        "name": "check_playlist",
+        "thought": "Re-check after the revision.",
+        "input": {},
+        "output": {
+          "passed": true,
+          "issues": []
+        }
+      },
+      {
+        "step": 8,
+        "kind": "result",
+        "name": "finish",
+        "thought": "Finished after 1 revision(s) with medium confidence.",
+        "input": {},
+        "output": {
+          "rounds": 1,
+          "confidence": "medium",
+          "songs": 5
+        }
+      },
+      {
+        "step": 9,
+        "kind": "tool",
+        "name": "retrieve_context",
+        "thought": "Fetch song cards and genre/mood notes to ground the explanation.",
+        "input": {},
+        "output": {
+          "documents": [
+            "song:5",
+            "song:17",
+            "song:2",
+            "song:3",
+            "song:6",
+            "mood:confident",
+            "genre:hip-hop"
+          ]
+        }
+      },
+      {
+        "step": 10,
+        "kind": "tool",
+        "name": "explain",
+        "thought": "Write one grounded, cited reason per song and verify it.",
+        "input": {},
+        "output": {
+          "source": "llm-grounded"
+        }
+      }
+    ]
+  },
+  {
+    "request": "romantic jazz instrumental from the 1960s",
+    "confidence": "medium",
+    "explain_source": "llm-grounded",
+    "seconds": 3.9797807501163334,
+    "profile": {
+      "genre": "jazz",
+      "mood": "romantic",
+      "tags": [
+        "romantic"
+      ],
+      "decade": 1960,
+      "instrumental": true
+    },
+    "songs": [
+      "Blue Note Lounge (jazz, instrumental=True, explicit=False)",
+      "Late Night Bebop (jazz, instrumental=True, explicit=False)",
+      "Midnight Coding (lofi, instrumental=True, explicit=False)",
+      "Spacewalk Thoughts (ambient, instrumental=True, explicit=False)",
+      "Night Drive Loop (synthwave, instrumental=True, explicit=False)"
+    ],
+    "trace": [
+      {
+        "step": 1,
+        "kind": "tool",
+        "name": "parse_request",
+        "thought": "Turn the free-text request into a structured profile.",
+        "input": {
+          "request": "romantic jazz instrumental from the 1960s"
+        },
+        "output": {
+          "profile": {
+            "genre": "jazz",
+            "mood": "romantic",
+            "tags": [
+              "romantic"
+            ],
+            "decade": 1960,
+            "instrumental": true
+          },
+          "source": "llm"
+        }
+      },
+      {
+        "step": 2,
+        "kind": "plan",
+        "name": "plan",
+        "thought": "Treat instrumental/clean/language as hard constraints and the rest as soft preferences.",
+        "input": {},
+        "output": {
+          "hard_constraints": {
+            "instrumental": true
+          },
+          "soft_preferences": {
+            "genre": "jazz",
+            "mood": "romantic",
+            "tags": [
+              "romantic"
+            ],
+            "decade": 1960
+          }
+        }
+      },
+      {
+        "step": 3,
+        "kind": "tool",
+        "name": "search_songs",
+        "thought": "Rank the catalog with the deterministic scorer.",
+        "input": {
+          "profile": {
+            "genre": "jazz",
+            "mood": "romantic",
+            "tags": [
+              "romantic"
+            ],
+            "decade": 1960,
+            "instrumental": true
+          },
+          "k": 5
+        },
+        "output": {
+          "top": [
+            "Blue Note Lounge",
+            "Late Night Bebop",
+            "Velvet Hours",
+            "Midnight Coding",
+            "Spacewalk Thoughts"
+          ]
+        }
+      },
+      {
+        "step": 4,
+        "kind": "check",
+        "name": "check_playlist",
+        "thought": "Verify hard constraints, result count and match quality.",
+        "input": {},
+        "output": {
+          "passed": false,
+          "issues": [
+            {
+              "type": "constraint_violation",
+              "constraints": {
+                "instrumental": true
+              },
+              "titles": [
+                "Velvet Hours"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "step": 5,
+        "kind": "decision",
+        "name": "decide_revision",
+        "thought": "The song Velvet Hours was flagged for violating the instrumental constraint, so I must filter it out and find a replacement that strictly adheres to the user's requirements.",
+        "input": {
+          "issues": [
+            "constraint_violation"
+          ]
+        },
+        "output": {
+          "action": "filter_violations",
+          "drop_field": null,
+          "decided_by": "llm"
+        }
+      },
+      {
+        "step": 6,
+        "kind": "tool",
+        "name": "apply_revision",
+        "thought": "Applied 'filter_violations' and re-searched.",
+        "input": {
+          "action": "filter_violations",
+          "drop_field": null
+        },
+        "output": {
+          "profile": {
+            "genre": "jazz",
+            "mood": "romantic",
+            "tags": [
+              "romantic"
+            ],
+            "decade": 1960,
+            "instrumental": true
+          },
+          "top": [
+            "Blue Note Lounge",
+            "Late Night Bebop",
+            "Midnight Coding",
+            "Spacewalk Thoughts",
+            "Night Drive Loop"
+          ]
+        }
+      },
+      {
+        "step": 7,
+        "kind": "check",
+        "name": "check_playlist",
+        "thought": "Re-check after the revision.",
+        "input": {},
+        "output": {
+          "passed": true,
+          "issues": []
+        }
+      },
+      {
+        "step": 8,
+        "kind": "result",
+        "name": "finish",
+        "thought": "Finished after 1 revision(s) with medium confidence.",
+        "input": {},
+        "output": {
+          "rounds": 1,
+          "confidence": "medium",
+          "songs": 5
+        }
+      },
+      {
+        "step": 9,
+        "kind": "tool",
+        "name": "retrieve_context",
+        "thought": "Fetch song cards and genre/mood notes to ground the explanation.",
+        "input": {},
+        "output": {
+          "documents": [
+            "song:29",
+            "song:30",
+            "song:2",
+            "song:6",
+            "song:8",
+            "mood:romantic",
+            "genre:jazz",
+            "mood:chill"
+          ]
+        }
+      },
+      {
+        "step": 10,
+        "kind": "tool",
+        "name": "explain",
+        "thought": "Write one grounded, cited reason per song and verify it.",
+        "input": {},
+        "output": {
+          "source": "llm-grounded"
+        }
+      }
+    ]
+  },
+  {
+    "request": "i am angry",
+    "confidence": "high",
+    "explain_source": "llm-grounded",
+    "seconds": 2.13535658409819,
+    "profile": {
+      "mood": "angry",
+      "tags": [
+        "aggressive"
+      ]
+    },
+    "songs": [
+      "Iron Requiem (metal, instrumental=False, explicit=False)",
+      "Storm Runner (rock, instrumental=False, explicit=False)",
+      "Gym Hero (pop, instrumental=False, explicit=False)",
+      "Bass Cathedral (edm, instrumental=True, explicit=False)"
+    ],
+    "trace": [
+      {
+        "step": 1,
+        "kind": "tool",
+        "name": "parse_request",
+        "thought": "Turn the free-text request into a structured profile.",
+        "input": {
+          "request": "i am angry"
+        },
+        "output": {
+          "profile": {
+            "mood": "angry",
+            "tags": [
+              "aggressive"
+            ]
+          },
+          "source": "llm"
+        }
+      },
+      {
+        "step": 2,
+        "kind": "plan",
+        "name": "plan",
+        "thought": "Treat instrumental/clean/language as hard constraints and the rest as soft preferences.",
+        "input": {},
+        "output": {
+          "hard_constraints": {},
+          "soft_preferences": {
+            "mood": "angry",
+            "tags": [
+              "aggressive"
+            ]
+          }
+        }
+      },
+      {
+        "step": 3,
+        "kind": "tool",
+        "name": "search_songs",
+        "thought": "Rank the catalog with the deterministic scorer.",
+        "input": {
+          "profile": {
+            "mood": "angry",
+            "tags": [
+              "aggressive"
+            ]
+          },
+          "k": 5
+        },
+        "output": {
+          "top": [
+            "Iron Requiem",
+            "Storm Runner",
+            "Gym Hero",
+            "Bass Cathedral"
+          ]
+        }
+      },
+      {
+        "step": 4,
+        "kind": "check",
+        "name": "check_playlist",
+        "thought": "Verify hard constraints, result count and match quality.",
+        "input": {},
+        "output": {
+          "passed": true,
+          "issues": []
+        }
+      },
+      {
+        "step": 5,
+        "kind": "result",
+        "name": "finish",
+        "thought": "Finished after 0 revision(s) with high confidence.",
+        "input": {},
+        "output": {
+          "rounds": 0,
+          "confidence": "high",
+          "songs": 4
+        }
+      },
+      {
+        "step": 6,
+        "kind": "tool",
+        "name": "retrieve_context",
+        "thought": "Fetch song cards and genre/mood notes to ground the explanation.",
+        "input": {},
+        "output": {
+          "documents": [
+            "song:14",
+            "song:3",
+            "song:5",
+            "song:38",
+            "mood:angry"
+          ]
+        }
+      },
+      {
+        "step": 7,
+        "kind": "tool",
+        "name": "explain",
+        "thought": "Write one grounded, cited reason per song and verify it.",
+        "input": {},
+        "output": {
+          "source": "llm-grounded"
+        }
+      }
+    ]
+  }
+]

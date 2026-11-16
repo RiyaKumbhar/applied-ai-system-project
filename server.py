@@ -93,6 +93,9 @@ def create_app(engine: VibeMatch | None = None) -> FastAPI:
             "songs": [song_json(s, sc, why, ceiling, result.reasons.get(s["id"], "")) for s, sc, why in result.recommendations],
             "parse_source": result.parse_source,
             "explain_source": result.explain_source,
+            "confidence": result.confidence,
+            "notes": result.notes,
+            "steps": [{"kind": t["kind"], "name": t["name"], "thought": t["thought"]} for t in result.trace],
         }
 
     @app.exception_handler(Exception)
