@@ -68,7 +68,7 @@ flowchart TD
     LOG --> H2([Human check 2 - developer<br/>reviews logs, traces and failures])
     TR[(docs/agent_traces.json<br/>ai_interactions.md)] --> H2
     AG -.-> TR
-    T[Tests - pytest<br/>42 tests with a fake LLM] -.->|verifies| PIPE
+    T[Tests - pytest<br/>45 tests with a fake LLM] -.->|verifies| PIPE
     EV[Evaluators - eval/<br/>run_eval.py: 17 prompts<br/>compare_variants.py: RAG and voice before/after] -.->|measures| PIPE
     EV --> REP[eval/report.md and<br/>eval/comparison_report.md]
     REP --> H2
@@ -111,7 +111,7 @@ Run it:
 ```bash
 uvicorn server:app --reload                                  # web app at http://localhost:8000
 python src/vibematch.py "upbeat latin party music"           # command line
-python -m pytest -q                                          # 42 tests, no API key needed
+python -m pytest -q                                          # 45 tests, no API key needed
 python eval/run_eval.py                                      # live evaluation (uses the API)
 python eval/run_eval.py --offline                            # evaluation, fallbacks only
 python eval/compare_variants.py                              # before/after: retrieval and voice (uses the API)
@@ -226,7 +226,7 @@ Each card shows a one-line "Why this song" (visible without clicking), the chat 
 
 ## Testing summary
 
-**How I tested:** 42 unit and API tests with a fake LLM client ([tests/](tests/)), plus an evaluation harness ([eval/run_eval.py](eval/run_eval.py)) that runs 17 prompts (13 ordinary, plus prompt injection, gibberish, off-topic and an unknown genre) and checks parsing, ranking, citation validity, explanation completeness and safety.
+**How I tested:** 45 unit and API tests with a fake LLM client ([tests/](tests/)), plus an evaluation harness ([eval/run_eval.py](eval/run_eval.py)) that runs 17 prompts (13 ordinary, plus prompt injection, gibberish, off-topic and an unknown genre) and checks parsing, ranking, citation validity, explanation completeness and safety.
 
 | Metric (live LLM, 17 prompts) | Result |
 |---|---|

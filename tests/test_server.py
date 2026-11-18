@@ -73,3 +73,31 @@ def test_chat_returns_agent_steps_and_confidence():
     body = make_client(fail=True).post("/api/chat", json={"message": "instrumental heavy metal"}).json()
     assert body["confidence"] in ("high", "medium", "low")
     assert body["steps"] and {"kind", "name", "thought"} <= body["steps"][0].keys()
+
+
+class EchoClient(FakeClient):
+    """LLM stand-in that always produces a complete, correctly cited explanation."""
+
+    def __init__(self, parsed):
+        super().__init__(parsed=parsed)
+        self.generate_calls = 0
+
+    def generate(self, system, user):
+        import re
+        self.generate_calls += 1
+        return "\n".join(f"{t}: Fits your request. [song:{i}]" for i, t in re.findall(r"\[song:(\d+)\] (.+?) - ", user))
+
+
+def test_identical_requests_are_served_from_cache():
+    client = EchoClient(ParsedRequest(genre="lofi", mood="chill"))
+    c = TestClient(server.create_app(VibeMatch(client=client)))
+    first = c.post("/api/chat", json={"message": "Chill   Lofi"}).json()
+    second = c.post("/api/chat", json={"message": "chill lofi"}).json()   # same request, different spacing/case
+    assert not first.get("cached") and second["cached"] is True
+    assert client.generate_calls == 1 and second["songs"] == first["songs"]
+
+
+def test_fallback_answers_are_never_cached():
+    c = make_client(fail=True)
+    c.post("/api/chat", json={"message": "chill lofi"})
+    assert c.post("/api/chat", json={"message": "chill lofi"}).json().get("cached") is None

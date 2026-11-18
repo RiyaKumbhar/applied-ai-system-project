@@ -23,6 +23,8 @@ WEB_DIR = Path(__file__).resolve().parent / "web"
 MAX_MESSAGE_CHARS = 500
 RATE_LIMIT = 20          # requests ...
 RATE_WINDOW_SECONDS = 60  # ... per IP per window
+CACHE_TTL_SECONDS = 3600  # identical requests are answered instantly, but only for LLM-quality answers
+CACHE_MAX = 64
 
 EMPTY_REPLY = ("I couldn't pick out a mood or genre from that. Try something like "
                "\"chill lofi for studying\" or \"upbeat latin party music\".")
@@ -52,6 +54,7 @@ def create_app(engine: VibeMatch | None = None) -> FastAPI:
     app = FastAPI(title="VibeMatch", docs_url="/api/docs", openapi_url="/api/openapi.json")
     state = {"engine": engine}
     hits: dict[str, deque] = defaultdict(deque)
+    cache: dict[tuple, tuple[float, dict]] = {}
 
     def get_engine() -> VibeMatch:
         if state["engine"] is None:  # built lazily so importing the module stays cheap
@@ -82,12 +85,17 @@ def create_app(engine: VibeMatch | None = None) -> FastAPI:
         message = body.message.strip()
         if not message:
             raise HTTPException(422, "Message is empty.")
+        key = (" ".join(message.lower().split()), body.k)
+        hit = cache.get(key)
+        if hit and time.monotonic() - hit[0] < CACHE_TTL_SECONDS:
+            log.info("cache hit chars=%d", len(message))
+            return {**hit[1], "cached": True}
         result = get_engine().ask(message, k=body.k)
         if not result.recommendations:
             return {"reply": EMPTY_REPLY, "profile": result.prefs, "songs": [],
                     "parse_source": result.parse_source, "explain_source": result.explain_source}
         ceiling = max_score(result.prefs)
-        return {
+        response = {
             "reply": result.explanation,
             "profile": result.prefs,
             "songs": [song_json(s, sc, why, ceiling, result.reasons.get(s["id"], "")) for s, sc, why in result.recommendations],
@@ -97,6 +105,11 @@ def create_app(engine: VibeMatch | None = None) -> FastAPI:
             "notes": result.notes,
             "steps": [{"kind": t["kind"], "name": t["name"], "thought": t["thought"]} for t in result.trace],
         }
+        if result.parse_source == "llm" and result.explain_source == "llm-grounded":
+            if len(cache) >= CACHE_MAX:
+                cache.pop(next(iter(cache)))  # drop the oldest entry
+            cache[key] = (time.monotonic(), response)
+        return response
 
     @app.exception_handler(Exception)
     async def unhandled(_: Request, exc: Exception):  # never leak internals to the browser

@@ -22,7 +22,7 @@ VibeMatch turns a plain-English mood request into song recommendations. It exten
 | Safety checks | 100% |
 | Fallback-only parse accuracy (`--offline`) | 88% |
 
-These numbers were re-run after the agent loop was added and did not change. They are good, but they come from a small test set that I wrote myself (see limitations). There are 43 automated tests.
+These numbers were re-run after the agent loop was added and did not change. They are good, but they come from a small test set that I wrote myself (see limitations). There are 45 automated tests.
 
 Before/after measurements for the later additions are in the [README](README.md#enhancements-rag-sources-specialized-voice-agent-and-per-song-reasons). With retrieval, invented descriptors fell from 32% to 3% of catalog terms. The "VibeMatch voice" cut lines from 16.9 to 12.9 words and filler words from 31% of lines to 0%, but cost a little groundedness (3% to 7%). Those used only 6 prompts, so they are indicative, not statistically solid.
 

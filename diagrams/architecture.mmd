@@ -47,7 +47,7 @@ flowchart TD
     LOG --> H2([Human check 2 - developer<br/>reviews logs, traces and failures])
     TR[(docs/agent_traces.json<br/>ai_interactions.md)] --> H2
     AG -.-> TR
-    T[Tests - pytest<br/>42 tests with a fake LLM] -.->|verifies| PIPE
+    T[Tests - pytest<br/>45 tests with a fake LLM] -.->|verifies| PIPE
     EV[Evaluators - eval/<br/>run_eval.py: 17 prompts<br/>compare_variants.py: RAG and voice before/after] -.->|measures| PIPE
     EV --> REP[eval/report.md and<br/>eval/comparison_report.md]
     REP --> H2
